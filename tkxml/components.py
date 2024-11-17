@@ -3,17 +3,40 @@ This module is used to create the default tkinter components and sinc them with 
 """
 from tkinter.ttk import Combobox
 from tkinter import (
-    PhotoImage, Frame, Label, Listbox, Menu, Canvas,
-    Checkbutton, Radiobutton, Spinbox, Button, Entry, Widget
+    Button, Canvas, Checkbutton, Entry, Label, Listbox, Menu, PhotoImage, Radiobutton, Spinbox, Widget, Frame
 )
+
 from typing import Optional
 
 from .utils import MissingAttributeException, MissingControllerException, MissingTagException
 from .controller import Controller
 
+CONFIG_PARAMETER_PARSERS = {
+    "textvariable": lambda config, controller: controller.get(config["textvariable"]),
+    "variable":     lambda config, controller: controller.get(config["variable"]),
+    "command":      lambda config, controller: controller.get(config["command"]),
+    "values":       lambda config, controller: ''.join(config["values"]).split('|')
+}
 
-def create_object(object_type: type, parent: Widget, params: dict, controller,
-                  init_params: dict = None):
+COMMON_COMPONENT_TAGS: dict[str, type] = {
+    "frame": Frame, "canvas": Canvas, "label": Label, "checkbutton": Checkbutton,
+    "radiobutton": Radiobutton, "spinbox": Spinbox, "button": Button, "entry": Entry,
+    "combobox": Combobox
+}
+
+COMPLEX_COMPONENTS = {
+    "page":       lambda parent, parameters, controller: create_page(parameters, parent, controller),
+    "menu":       lambda parent, parameters, controller: create_menu(parameters, parent),
+    "menuoption": lambda parent, parameters, controller: create_menu_option(parameters, parent, controller),
+    "image":      lambda parent, parameters, controller: create_photo_image(parameters, parent, controller),
+    "listbox":    lambda parent, parameters, controller: create_listbox(parameters, parent, controller),
+    "title":      lambda parent, parameters, controller: parent.title(parameters["title"]),
+    "options":    lambda parent, parameters, controller: [parent.option_add("*"+key, value) for key, value in parameters.items()],
+    "geometry":   lambda parent, parameters, controller: parent.geometry(parameters["size"]+"+"+parameters["position"]),
+    "configure":  lambda parent, parameters, controller: parent.configure(parameters)
+}
+
+def create_object(object_type: type, parent: Widget, params: dict, controller: Optional[Controller]):
     """
     Default function for creating the tkinter component
 
@@ -22,19 +45,17 @@ def create_object(object_type: type, parent: Widget, params: dict, controller,
         parent (Widget): The parent tkinter object
         params (dict): The parameters from the xml element
         controller (Optional[Controller]): The active controller for the component
-        init_params (dict): The parameters specific to the type of widget as well as format
 
     Returns:
         Widget: The initialised component
     """
-    pack, config, exc = split_params(params, init_params)
-    element = object_type(parent,
-                            **dict((key, init_params[key](params, controller)) for key in exc))
-    element.config(**config)
-    element.pack(**pack)
+    pack, config = split_params(params, controller)
+    element = object_type(parent, **config)
+    element.pack(pack)
+
     return element
 
-def split_params(params: dict, exclude: dict = None) -> tuple[dict, dict, list]:
+def split_params(params: dict, controller: Optional[Controller]) -> tuple [dict, dict]:
     """
     Splits the component parmeters into pack, config and exculsive (widget specific parameters)
 
@@ -43,21 +64,19 @@ def split_params(params: dict, exclude: dict = None) -> tuple[dict, dict, list]:
         exclude (dict): The parameters specific to the widget
 
     Returns:
-        tuple[dict, dict, list]: Tuple of pack, config and exculsive parameters
+           tuple[dict, dict]: Tuple of pack and processed config parameters
     """
     pack = {}
     config = {}
-    exc = []
+
     for key, item in params.items():
         if key in ["after", "anchor", "before", "expand", "fill",
                    "in", "ipadx", "ipady", "padx","pady", "side"]:
             pack[key] = item
-        elif exclude is None or key not in exclude:
-            config[key] = item
         else:
-            exc.append(key)
+            config[key] = CONFIG_PARAMETER_PARSERS.get(key,lambda x, y: item)(params, controller)
 
-    return pack, config, exc
+    return pack, config
 
 def remove_params(params: dict, keys: list) -> dict:
     """
@@ -72,7 +91,7 @@ def remove_params(params: dict, keys: list) -> dict:
     """
     return dict((key, item) for key, item in params.items() if key not in keys)
 
-def create_photo_image(params: dict, parent) -> Label:
+def create_photo_image(params: dict, parent: Widget, controller: Optional[Controller]) -> Label:
     """
     Creates a photo image component
 
@@ -86,7 +105,7 @@ def create_photo_image(params: dict, parent) -> Label:
     icon = PhotoImage(file = params["file"])
     label_icon = Label(parent)
 
-    pack, config, _ = split_params(params, exclude = ["file"])
+    pack, config = split_params(params, controller)
     label_icon.config(image = icon, **config)
     label_icon.image = icon
     label_icon.pack(**pack)
@@ -105,15 +124,14 @@ def create_listbox(params: dict, parent, controller: Optional[Controller]) -> Li
     Returns:
         Widget: The initialised component
     """
-    listbox: Listbox = create_object(Listbox, parent, params, controller,
-                                     init_params={"values": lambda x, y: None})
+    listbox: Listbox = create_object(Listbox, parent, params, controller)
 
     for i, item in enumerate(''.join(params["values"]).split('|')):
         listbox.insert(i + 1, item)
 
     return listbox
 
-def create_menu(params: dict, parent: Menu, self) -> Menu:
+def create_menu(params: dict, parent: Widget) -> Menu:
     """
     Creates a menu component
 
@@ -127,8 +145,8 @@ def create_menu(params: dict, parent: Menu, self) -> Menu:
     """
     menu = Menu(parent, **remove_params(params, ["label"]))
 
-    if parent == self.master:
-        self.master.config(menu = menu)
+    if isinstance(parent, Menu):
+        parent.config(menu = menu)
     else:
         parent.add_cascade(menu = menu, **remove_params(params, ["tearoff"]))
 
@@ -163,10 +181,11 @@ def create_page(params: dict, parent: Frame, controller: Optional[Controller]) -
     Returns:
         Frame: The initialised component
     """
-    _, config, _ = split_params(params, exclude = ["name", "selected"])
+    _, config = split_params(params, controller)
+    page_name = config.pop("name")
+
     page = Frame(parent)
     page.config(**config)
-    page_name = params.get("name")
 
     if not page_name:
         raise MissingAttributeException("page", page, "name")
@@ -185,83 +204,15 @@ def create_page(params: dict, parent: Frame, controller: Optional[Controller]) -
 
     return page
 
-def create_component(component: str, params: dict, parent, controller: Optional[Controller], self):
-    """
-    Selects and creates the default tkinter components using the params based off the
-    component tag name.
-    
-    Parameters:
-        component(str): The component name
-        params (dict): The parameters from the xml element
-        parent (Widget): The parent tkinter component
-        controller (Optional[Controller]): The current active controller
-        self (Tkxml): The Tkxml main object
-    
-    Returns:
-        Optional[Widget]: The initialized component if created
+def create_lambda(component):
+    return lambda parent, parameters, controller: create_object(
+            component, parent, parameters, controller)
 
-    Raises:
-        MissingTagException: If the component could not be found
-    """
-    component_object = None
-    match component:
-        case "frame":
-            component_object = create_object(Frame,       parent, params, controller)
+def get_components():
+    components = {}
+    for tag, component in COMMON_COMPONENT_TAGS.items():
+        components[tag] = create_lambda(component)
 
-        case "canvas":
-            component_object = create_object(Canvas,      parent, params, controller)
+    components.update(COMPLEX_COMPONENTS)
 
-        case "label":
-            component_object = create_object(Label,       parent, params, controller, {
-        "textvariable":    lambda params, controller: controller.get(params["textvariable"])})
-
-        case "checkbutton":
-            component_object = create_object(Checkbutton, parent, params, controller, {
-        "variable":        lambda params, controller: controller.get(params["variable"])})
-
-        case "radiobutton":
-            component_object = create_object(Radiobutton, parent, params, controller, {
-        "variable":        lambda params, controller: controller.get(params["variable"])})
-
-        case "spinbox":
-            component_object = create_object(Spinbox,     parent, params, controller, {
-        "textvariable":    lambda params, controller: controller.get(params["textvariable"])})
-
-        case "button":
-            component_object = create_object(Button,      parent, params, controller, {
-        "command":         lambda params, controller: controller.get(params["command"])})
-
-        case "entry":
-            component_object = create_object(Entry,       parent, params, controller, {
-        "textvariable":    lambda params, controller: controller.get(params["textvariable"])})
-
-        case "combobox":
-            component_object = create_object(Combobox,       parent, params, controller, {
-        "values":          lambda params, controller: ''.join(params["values"]).split('|'),
-        "textvariable":    lambda params, controller: controller.get(params["textvariable"])})
-
-        case "page":
-            component_object = create_page(params, parent, controller)
-
-        case "menu": component_object = create_menu(params, parent, self)
-        case "menuoption": create_menu_option(params, parent, controller)
-        case "image": component_object = create_photo_image(params, parent)
-        case "listbox": component_object = create_listbox(params, parent, controller)
-
-        case "title":
-            self.master.title(params["title"])
-
-        case "options":
-            for key, value in params.items():
-                self.master.option_add("*"+key, value)
-
-        case "geometry":
-            self.master.geometry(params["size"]+ "+" + params["position"])
-
-        case "configure":
-            self.master.configure(params)
-
-        case _:
-            raise MissingTagException(component, parent)
-
-    return component_object
+    return components

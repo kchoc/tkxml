@@ -2,12 +2,12 @@
 This module is part of the tkxml package. It provides functionality to handle
 XML transformations, parse inputs, and create tkinter windows.
 """
-from tkinter import Tk
+from tkinter import TclError, Tk
 from typing import Optional
 import xml.etree.ElementTree as ET
 
-from .utils import MissingControllerException, MissingAttributeException, MissingTagException
-from .components import create_component
+from .utils import MissingControllerException, MissingAttributeException, MissingTagException, raise_
+from .components import get_components
 from .controller import Controller
 from .component import Component
 
@@ -38,6 +38,8 @@ class Tkxml:
         self.controllers = controllers
         self.custom_components = dict((component.element_tag, component)
                                       for component in custom_components)
+
+        self.components = get_components()
 
         # Parse the view
         view = ET.parse(filename)
@@ -100,14 +102,19 @@ class Tkxml:
             if custom_element:
                 element = custom_element(parent, attrs, controller)
             else:
-                element = create_component(element_tag.tag, attrs, parent, controller, self)
+                element = self.components.get(element_tag.tag,
+                    lambda x, y, z: raise_(MissingTagException(element_tag.tag, parent))
+                )(parent, attrs, controller)
 
             element_id = element_tag.attrib.get("id")
             if element_id:
                 controller.set(element_id, element)
+
         except (MissingTagException, MissingAttributeException, MissingControllerException,
                 ValueError) as e:
             print(e)
+        except TclError as e:
+            print(f"{e} | {element_tag.tag}")
 
         if element is not None and not isinstance(element, Component):
             parent = element

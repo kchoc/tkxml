@@ -22,3 +22,6 @@ class MissingControllerException(BaseException):
     """
     def __init__(self, tag, component):
         super().__init__(f"WARN: Missing controller for {tag} | {component}")
+
+def raise_(error: BaseException):
+    raise error
