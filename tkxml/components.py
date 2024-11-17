@@ -3,12 +3,13 @@ This module is used to create the default tkinter components and sinc them with 
 """
 from tkinter.ttk import Combobox
 from tkinter import (
-    Button, Canvas, Checkbutton, Entry, Label, Listbox, Menu, PhotoImage, Radiobutton, Spinbox, Widget, Frame
+    Button, Canvas, Checkbutton, Entry, Label, Listbox,
+    Menu, PhotoImage, Radiobutton, Spinbox, Widget, Frame
 )
 
-from typing import Optional
+from typing import Callable, Optional
 
-from .utils import MissingAttributeException, MissingControllerException, MissingTagException
+from .utils import MissingAttributeException, MissingControllerException
 from .controller import Controller
 
 CONFIG_PARAMETER_PARSERS = {
@@ -25,18 +26,24 @@ COMMON_COMPONENT_TAGS: dict[str, type] = {
 }
 
 COMPLEX_COMPONENTS = {
-    "page":       lambda parent, parameters, controller: create_page(parameters, parent, controller),
-    "menu":       lambda parent, parameters, controller: create_menu(parameters, parent),
-    "menuoption": lambda parent, parameters, controller: create_menu_option(parameters, parent, controller),
-    "image":      lambda parent, parameters, controller: create_photo_image(parameters, parent, controller),
-    "listbox":    lambda parent, parameters, controller: create_listbox(parameters, parent, controller),
-    "title":      lambda parent, parameters, controller: parent.title(parameters["title"]),
-    "options":    lambda parent, parameters, controller: [parent.option_add("*"+key, value) for key, value in parameters.items()],
-    "geometry":   lambda parent, parameters, controller: parent.geometry(parameters["size"]+"+"+parameters["position"]),
-    "configure":  lambda parent, parameters, controller: parent.configure(parameters)
+    "page": lambda parent, parameters, controller: create_page(parameters, parent, controller),
+    "menu": lambda parent, parameters, controller: create_menu(parameters, parent),
+    "menuoption": lambda parent, parameters, controller:
+        create_menu_option(parameters, parent, controller),
+    "image": lambda parent, parameters, controller:
+        create_photo_image(parameters, parent, controller),
+    "listbox": lambda parent, parameters, controller:
+        create_listbox(parameters, parent, controller),
+    "title": lambda parent, parameters, controller: parent.title(parameters["title"]),
+    "options": lambda parent, parameters, controller:
+        [parent.option_add("*"+key, value) for key, value in parameters.items()],
+    "geometry": lambda parent, parameters, controller:
+        parent.geometry(parameters["size"]+"+"+parameters["position"]),
+    "configure": lambda parent, parameters, controller: parent.configure(parameters)
 }
 
-def create_object(object_type: type, parent: Widget, params: dict, controller: Optional[Controller]):
+def create_object(object_type: type, parent: Widget, params: dict,
+                  controller: Optional[Controller]):
     """
     Default function for creating the tkinter component
 
@@ -64,7 +71,7 @@ def split_params(params: dict, controller: Optional[Controller]) -> tuple [dict,
         exclude (dict): The parameters specific to the widget
 
     Returns:
-           tuple[dict, dict]: Tuple of pack and processed config parameters
+           tuple: Tuple of pack and processed config parameters
     """
     pack = {}
     config = {}
@@ -74,7 +81,8 @@ def split_params(params: dict, controller: Optional[Controller]) -> tuple [dict,
                    "in", "ipadx", "ipady", "padx","pady", "side"]:
             pack[key] = item
         else:
-            config[key] = CONFIG_PARAMETER_PARSERS.get(key,lambda x, y: item)(params, controller)
+            config[key] = CONFIG_PARAMETER_PARSERS.get(key,
+                            lambda x, y, value=item: value)(params, controller)
 
     return pack, config
 
@@ -204,14 +212,17 @@ def create_page(params: dict, parent: Frame, controller: Optional[Controller]) -
 
     return page
 
-def create_lambda(component):
-    return lambda parent, parameters, controller: create_object(
-            component, parent, parameters, controller)
+def get_components() -> dict[str, Callable]:
+    """
+    Gets the components available with their corresponding tags
 
-def get_components():
+    Returns:
+        dict: A dictionary of tag keys and element creaion callables
+    """
     components = {}
     for tag, component in COMMON_COMPONENT_TAGS.items():
-        components[tag] = create_lambda(component)
+        components[tag] = lambda parent, parameters, controller, value=component: create_object(
+            value, parent, parameters, controller)
 
     components.update(COMPLEX_COMPONENTS)
 
