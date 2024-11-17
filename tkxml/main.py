@@ -98,7 +98,7 @@ class Tkxml:
             custom_element = self.custom_components.get(element_tag.tag)
 
             if custom_element:
-                element = custom_element(attrs, parent, controller)
+                element = custom_element(parent, attrs, controller)
             else:
                 element = create_component(element_tag.tag, attrs, parent, controller, self)
 
