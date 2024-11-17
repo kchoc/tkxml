@@ -107,7 +107,7 @@ class Tkxml:
         except ValueError as e:
             print(e)
         except KeyError as e:
-            print(f"WARN: Missing {e} attribute | {element_tag.tag}")
+            print(e)
 
         if element is not None and not isinstance(element, Component):
             parent = element

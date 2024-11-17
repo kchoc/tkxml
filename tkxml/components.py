@@ -6,6 +6,9 @@ from tkinter import (
     PhotoImage, Frame, Label, Listbox, Menu, Canvas,
     Checkbutton, Radiobutton, Spinbox, Button, Entry, Widget
 )
+from typing import Optional
+
+from .controller import Controller
 
 
 def create_object(object_type: type, parent: Widget, params: dict, controller,
@@ -89,7 +92,7 @@ def create_photo_image(params: dict, parent) -> Label:
 
     return label_icon
 
-def create_listbox(params: dict, parent, controller) -> Listbox:
+def create_listbox(params: dict, parent, controller: Optional[Controller]) -> Listbox:
     """
     Creates a listbox component
 
@@ -130,7 +133,7 @@ def create_menu(params: dict, parent: Menu, self) -> Menu:
 
     return menu
 
-def create_menu_option(params: dict, parent: Menu, controller) -> None:
+def create_menu_option(params: dict, parent: Menu, controller: Optional[Controller]) -> None:
     """
     Creates a photo image component
 
@@ -142,7 +145,31 @@ def create_menu_option(params: dict, parent: Menu, controller) -> None:
     attr = remove_params(params, ["command"])
     parent.add_command(**attr, command=controller.get(params["command"]))
 
-def create_component(component: str, params: dict, parent, controller, self):
+def create_page(params: dict, parent: Frame, controller: Optional[Controller]) -> Frame:
+    _, config, _ = split_params(params, exclude = ["name", "selected"])
+    page = Frame(parent)
+    page.config(**config)
+    page_name = params.get("name")
+
+    if not page_name:
+        raise KeyError(f"Page attribute is missing.")
+
+    if controller is None:
+        raise ValueError(f"Controller has not been set for {page_name}.")
+
+    if page_name in controller.pages:
+        raise ValueError(f"{page_name} page already exists.")
+
+    controller.pages[page_name] = page
+
+    selected = params.get("selected")
+    if selected and selected == "True" or not controller.active_page:
+        controller.set_page(page_name)
+    
+
+    return page
+
+def create_component(component: str, params: dict, parent, controller: Optional[Controller], self):
     """
     Selects and creates the default tkinter components using the params based off the
     component tag name.
@@ -195,6 +222,9 @@ def create_component(component: str, params: dict, parent, controller, self):
         case "combobox":
             component_object = create_object(Combobox,       parent, params, controller, {
         "values":          lambda params, controller: ''.join(params["values"]).split('|')})
+        
+        case "page":
+            component_object = create_page(params, parent, controller)
 
         case "menu": component_object = create_menu(params, parent, self)
         case "menuoption": create_menu_option(params, parent, controller)
