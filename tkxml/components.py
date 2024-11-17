@@ -221,7 +221,8 @@ def create_component(component: str, params: dict, parent, controller: Optional[
 
         case "combobox":
             component_object = create_object(Combobox,       parent, params, controller, {
-        "values":          lambda params, controller: ''.join(params["values"]).split('|')})
+        "values":          lambda params, controller: ''.join(params["values"]).split('|'),
+        "textvariable":    lambda params, controller: controller.get(params["textvariable"])})
         
         case "page":
             component_object = create_page(params, parent, controller)
