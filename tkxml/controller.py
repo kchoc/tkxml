@@ -15,6 +15,15 @@ class Controller:
         self.active_page: Optional[Frame] = None
 
     def set_page(self, page_name: str):
+        """
+        Sets the active page for the controller
+
+        Args:
+            page_name (str): The name of the page to set active
+
+        Raises:
+            ValueError: Checks if the page name exists
+        """
         selected_page = self.pages.get(page_name)
         if not selected_page:
             raise ValueError(f"Cannot find {page_name} page.")
@@ -22,7 +31,7 @@ class Controller:
         for page in self.pages.values():
             page.pack_forget()  # Hide all pages
 
-        selected_page.pack(fill="both", expand=True) 
+        selected_page.pack(fill="both", expand=True)
         self.active_page = page_name
 
     def get(self, variable_name: str):

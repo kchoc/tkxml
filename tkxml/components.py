@@ -8,6 +8,7 @@ from tkinter import (
 )
 from typing import Optional
 
+from .utils import MissingAttributeException, MissingControllerException, MissingTagException
 from .controller import Controller
 
 
@@ -146,16 +147,32 @@ def create_menu_option(params: dict, parent: Menu, controller: Optional[Controll
     parent.add_command(**attr, command=controller.get(params["command"]))
 
 def create_page(params: dict, parent: Frame, controller: Optional[Controller]) -> Frame:
+    """
+    Creates a page inside the current controller
+
+    Parameters:
+        params (dict): The parameters from the xml element
+        parent (Frame): The parent tkinter object
+        controller (Optional[Controller]): The current active controller
+
+    Raises:
+        MissingAttributeException: Presence check for "name" attribute
+        MissingControllerException: Presence check for controller
+        ValueError: Presence check if page already exists in controller
+
+    Returns:
+        Frame: The initialised component
+    """
     _, config, _ = split_params(params, exclude = ["name", "selected"])
     page = Frame(parent)
     page.config(**config)
     page_name = params.get("name")
 
     if not page_name:
-        raise KeyError(f"Page attribute is missing.")
+        raise MissingAttributeException("page", page, "name")
 
     if controller is None:
-        raise ValueError(f"Controller has not been set for {page_name}.")
+        raise MissingControllerException("page", page)
 
     if page_name in controller.pages:
         raise ValueError(f"{page_name} page already exists.")
@@ -165,7 +182,6 @@ def create_page(params: dict, parent: Frame, controller: Optional[Controller]) -
     selected = params.get("selected")
     if selected and selected == "True" or not controller.active_page:
         controller.set_page(page_name)
-    
 
     return page
 
@@ -185,7 +201,7 @@ def create_component(component: str, params: dict, parent, controller: Optional[
         Optional[Widget]: The initialized component if created
 
     Raises:
-        ValueError: If the component could not be found
+        MissingTagException: If the component could not be found
     """
     component_object = None
     match component:
@@ -223,7 +239,7 @@ def create_component(component: str, params: dict, parent, controller: Optional[
             component_object = create_object(Combobox,       parent, params, controller, {
         "values":          lambda params, controller: ''.join(params["values"]).split('|'),
         "textvariable":    lambda params, controller: controller.get(params["textvariable"])})
-        
+
         case "page":
             component_object = create_page(params, parent, controller)
 
@@ -246,6 +262,6 @@ def create_component(component: str, params: dict, parent, controller: Optional[
             self.master.configure(params)
 
         case _:
-            raise ValueError(f"WARN: Could not find {component} tag")
+            raise MissingTagException(component, parent)
 
     return component_object

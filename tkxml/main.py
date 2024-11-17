@@ -6,6 +6,7 @@ from tkinter import Tk
 from typing import Optional
 import xml.etree.ElementTree as ET
 
+from .utils import MissingControllerException, MissingAttributeException, MissingTagException
 from .components import create_component
 from .controller import Controller
 from .component import Component
@@ -100,13 +101,12 @@ class Tkxml:
                 element = custom_element(attrs, parent, controller)
             else:
                 element = create_component(element_tag.tag, attrs, parent, controller, self)
-                
+
             element_id = element_tag.attrib.get("id")
             if element_id:
                 controller.set(element_id, element)
-        except ValueError as e:
-            print(e)
-        except KeyError as e:
+        except (MissingTagException, MissingAttributeException, MissingControllerException,
+                ValueError) as e:
             print(e)
 
         if element is not None and not isinstance(element, Component):
