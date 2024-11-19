@@ -12,35 +12,10 @@ from typing import Callable, Optional
 from .utils import MissingAttributeException, MissingControllerException
 from .controller import Controller
 
-CONFIG_PARAMETER_PARSERS = {
-    "textvariable": lambda config, controller: controller.get(config["textvariable"]),
-    "variable":     lambda config, controller: controller.get(config["variable"]),
-    "command":      lambda config, controller: controller.get(config["command"]),
-    "values":       lambda config, controller: ''.join(config["values"]).split('|')
-}
-
-COMMON_COMPONENT_TAGS: dict[str, type] = {
-    "frame": Frame, "canvas": Canvas, "label": Label, "checkbutton": Checkbutton,
-    "radiobutton": Radiobutton, "spinbox": Spinbox, "button": Button, "entry": Entry,
-    "combobox": Combobox
-}
-
-COMPLEX_COMPONENTS = {
-    "page": lambda parent, parameters, controller: create_page(parameters, parent, controller),
-    "menu": lambda parent, parameters, controller: create_menu(parameters, parent),
-    "menuoption": lambda parent, parameters, controller:
-        create_menu_option(parameters, parent, controller),
-    "image": lambda parent, parameters, controller:
-        create_photo_image(parameters, parent, controller),
-    "listbox": lambda parent, parameters, controller:
-        create_listbox(parameters, parent, controller),
-    "title": lambda parent, parameters, controller: parent.title(parameters["title"]),
-    "options": lambda parent, parameters, controller:
-        [parent.option_add("*"+key, value) for key, value in parameters.items()],
-    "geometry": lambda parent, parameters, controller:
-        parent.geometry(parameters["size"]+"+"+parameters["position"]),
-    "configure": lambda parent, parameters, controller: parent.configure(parameters)
-}
+def process_command(command: str, controller: Optional[Controller]):
+    if command[0] == "$":
+        return lambda controller=controller: exec(command[1:], {"controller": controller})
+    return controller.get(command)
 
 def create_object(object_type: type, parent: Widget, params: dict,
                   controller: Optional[Controller]):
@@ -99,7 +74,7 @@ def remove_params(params: dict, keys: list) -> dict:
     """
     return dict((key, item) for key, item in params.items() if key not in keys)
 
-def create_photo_image(params: dict, parent: Widget, controller: Optional[Controller]) -> Label:
+def create_photo_image(parent: Widget, params: dict, controller: Optional[Controller]) -> Label:
     """
     Creates a photo image component
 
@@ -120,7 +95,7 @@ def create_photo_image(params: dict, parent: Widget, controller: Optional[Contro
 
     return label_icon
 
-def create_listbox(params: dict, parent, controller: Optional[Controller]) -> Listbox:
+def create_listbox(parent, params: dict, controller: Optional[Controller]) -> Listbox:
     """
     Creates a listbox component
 
@@ -139,7 +114,7 @@ def create_listbox(params: dict, parent, controller: Optional[Controller]) -> Li
 
     return listbox
 
-def create_menu(params: dict, parent: Widget) -> Menu:
+def create_menu(parent: Widget, params: dict, controller: Optional[Controller]) -> Menu:
     """
     Creates a menu component
 
@@ -160,7 +135,7 @@ def create_menu(params: dict, parent: Widget) -> Menu:
 
     return menu
 
-def create_menu_option(params: dict, parent: Menu, controller: Optional[Controller]) -> None:
+def create_menu_option(parent: Menu, params: dict, controller: Optional[Controller]) -> None:
     """
     Creates a photo image component
 
@@ -172,7 +147,7 @@ def create_menu_option(params: dict, parent: Menu, controller: Optional[Controll
     attr = remove_params(params, ["command"])
     parent.add_command(**attr, command=controller.get(params["command"]))
 
-def create_page(params: dict, parent: Frame, controller: Optional[Controller]) -> Frame:
+def create_page(parent: Frame, params: dict, controller: Optional[Controller]) -> Frame:
     """
     Creates a page inside the current controller
 
@@ -190,25 +165,33 @@ def create_page(params: dict, parent: Frame, controller: Optional[Controller]) -
         Frame: The initialised component
     """
     _, config = split_params(params, controller)
-    page_name = config.pop("name")
+    page_name = config.pop("name", None)
+    page_section = config.pop("section", None)
 
     page = Frame(parent)
     page.config(**config)
 
     if not page_name:
         raise MissingAttributeException("page", page, "name")
+    
+    if not page_section:
+        raise MissingAttributeException("page", page, "section")
 
     if controller is None:
         raise MissingControllerException("page", page)
+    
+    if page_section not in controller.pages:
+        controller.pages[page_section] = {}
+        controller.active_pages[page_section] = None
 
-    if page_name in controller.pages:
+    if page_name in controller.pages[page_section]:
         raise ValueError(f"{page_name} page already exists.")
 
-    controller.pages[page_name] = page
+    controller.pages[page_section][page_name] = page
 
     selected = params.get("selected")
-    if selected and selected == "True" or not controller.active_page:
-        controller.set_page(page_name)
+    if selected and selected == "True" or not controller.active_pages[page_section]:
+        controller.set_page(page_section, page_name)
 
     return page
 
@@ -227,3 +210,30 @@ def get_components() -> dict[str, Callable]:
     components.update(COMPLEX_COMPONENTS)
 
     return components
+
+CONFIG_PARAMETER_PARSERS = {
+    "textvariable": lambda config, controller: controller.get(config["textvariable"]),
+    "variable":     lambda config, controller: controller.get(config["variable"]),
+    "command":      lambda config, controller: process_command(config["command"], controller),
+    "values":       lambda config, controller: ''.join(config["values"]).split('|')
+}
+
+COMMON_COMPONENT_TAGS: dict[str, type] = {
+    "frame": Frame, "canvas": Canvas, "label": Label, "checkbutton": Checkbutton,
+    "radiobutton": Radiobutton, "spinbox": Spinbox, "button": Button, "entry": Entry,
+    "combobox": Combobox
+}
+
+COMPLEX_COMPONENTS = {
+    "page": create_page,
+    "menu": create_menu,
+    "menuoption": create_menu_option,
+    "image": create_photo_image,
+    "listbox": create_listbox,
+    "title": lambda parent, parameters, controller: parent.title(parameters["title"]),
+    "options": lambda parent, parameters, controller:
+        [parent.option_add("*"+key, value) for key, value in parameters.items()],
+    "geometry": lambda parent, parameters, controller:
+        parent.geometry(parameters["size"]+"+"+parameters["position"]),
+    "configure": lambda parent, parameters, controller: parent.configure(parameters)
+}

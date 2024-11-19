@@ -11,10 +11,10 @@ class Controller:
     """
 
     def __init__(self):
-        self.pages: dict[str, Frame] = {}
-        self.active_page: Optional[Frame] = None
+        self.pages: dict[str, dict[str, Frame]] = {}
+        self.active_pages: dict[str, Optional[str]] = {}
 
-    def set_page(self, page_name: str):
+    def set_page(self, section_name: str, page_name: str):
         """
         Sets the active page for the controller
 
@@ -24,15 +24,19 @@ class Controller:
         Raises:
             ValueError: Checks if the page name exists
         """
-        selected_page = self.pages.get(page_name)
-        if not selected_page:
-            raise ValueError(f"Cannot find {page_name} page.")
+        selected_section = self.pages.get(section_name)
+        if not selected_section:
+            raise KeyError(f"Cannot find {section_name} page section.")
 
-        for page in self.pages.values():
+        selected_page = selected_section.get(page_name)
+        if not selected_page:
+            raise KeyError(f"Cannot find {page_name} page.")
+
+        for page in selected_section.values():
             page.pack_forget()  # Hide all pages
 
         selected_page.pack(fill="both", expand=True)
-        self.active_page = page_name
+        self.active_pages[section_name] = page_name
 
     def get(self, variable_name: str):
         """
