@@ -6,7 +6,9 @@ from tkinter import TclError, Tk
 from typing import Optional
 import xml.etree.ElementTree as ET
 
-from .utils import MissingControllerException, MissingAttributeException, MissingTagException, raise_
+from .utils import (
+    MissingControllerException, MissingAttributeException, MissingTagException, raise_
+)
 from .components import get_components
 from .controller import Controller
 from .component import Component

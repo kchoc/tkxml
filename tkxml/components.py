@@ -1,5 +1,5 @@
 """
-This module is used to create the default tkinter components and sinc them with the controllerss
+This module is used to create the default tkinter components and sinc them with the controllers
 """
 from tkinter.ttk import Combobox
 from tkinter import (
@@ -12,7 +12,18 @@ from typing import Callable, Optional
 from .utils import MissingAttributeException, MissingControllerException
 from .controller import Controller
 
-def process_command(command: str, controller: Optional[Controller]):
+def process_command(command: str, controller: Optional[Controller]) -> Callable:
+    """
+    Processess commands; $ signifies a python expresion, else accesses a fucntion inside the
+    current controller
+
+    Args:
+        command (str): The parameter value of the command
+        controller (Optional[Controller]): The current active controller
+
+    Returns:
+        Callable: The function from the parsed command parameter
+    """
     if command[0] == "$":
         return lambda controller=controller: exec(command[1:], {"controller": controller})
     return controller.get(command)
@@ -43,7 +54,7 @@ def split_params(params: dict, controller: Optional[Controller]) -> tuple [dict,
 
     Parameters:
         params (dict): The parameters from the xml element
-        exclude (dict): The parameters specific to the widget
+        controller (Optional[Controller]): The current active controller
 
     Returns:
            tuple: Tuple of pack and processed config parameters
@@ -79,8 +90,9 @@ def create_photo_image(parent: Widget, params: dict, controller: Optional[Contro
     Creates a photo image component
 
     Parameters:
-        params (dict): The parameters from the xml element
         parent (Widget): The parent tkinter object
+        params (dict): The parameters from the xml element
+        controller (Optional[Controller]): The current active controller
 
     Returns:
         Widget: The initialised component
@@ -100,8 +112,8 @@ def create_listbox(parent, params: dict, controller: Optional[Controller]) -> Li
     Creates a listbox component
 
     Parameters:
-        params (dict): The parameters from the xml element
         parent (Widget): The parent tkinter object
+        params (dict): The parameters from the xml element
         controller (Optional[Controller]): The current active controller
 
     Returns:
@@ -114,14 +126,13 @@ def create_listbox(parent, params: dict, controller: Optional[Controller]) -> Li
 
     return listbox
 
-def create_menu(parent: Widget, params: dict, controller: Optional[Controller]) -> Menu:
+def create_menu(parent: Widget, params: dict, _=None) -> Menu:
     """
     Creates a menu component
 
     Parameters:
-        params (dict): The parameters from the xml element
         parent (Widget): The parent tkinter object
-        self (Tkxml): The Tkxml main object
+        params (dict): The parameters from the xml element
 
     Returns:
         Widget: The initialised component
@@ -137,11 +148,11 @@ def create_menu(parent: Widget, params: dict, controller: Optional[Controller]) 
 
 def create_menu_option(parent: Menu, params: dict, controller: Optional[Controller]) -> None:
     """
-    Creates a photo image component
+    Adds an option to the menu
 
     Parameters:
-        params (dict): The parameters from the xml element
         parent (Widget): The parent tkinter object
+        params (dict): The parameters from the xml element
         controller (Optional[Controller]): The current active controller
     """
     attr = remove_params(params, ["command"])
@@ -152,12 +163,12 @@ def create_page(parent: Frame, params: dict, controller: Optional[Controller]) -
     Creates a page inside the current controller
 
     Parameters:
-        params (dict): The parameters from the xml element
         parent (Frame): The parent tkinter object
+        params (dict): The parameters from the xml element
         controller (Optional[Controller]): The current active controller
 
     Raises:
-        MissingAttributeException: Presence check for "name" attribute
+        MissingAttributeException: Presence check for "name" and "section" attribute
         MissingControllerException: Presence check for controller
         ValueError: Presence check if page already exists in controller
 
@@ -173,13 +184,13 @@ def create_page(parent: Frame, params: dict, controller: Optional[Controller]) -
 
     if not page_name:
         raise MissingAttributeException("page", page, "name")
-    
+
     if not page_section:
         raise MissingAttributeException("page", page, "section")
 
     if controller is None:
         raise MissingControllerException("page", page)
-    
+
     if page_section not in controller.pages:
         controller.pages[page_section] = {}
         controller.active_pages[page_section] = None
