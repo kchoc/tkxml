@@ -68,7 +68,7 @@ class Tkxml:
             if controller:
                 return controller
 
-            print(f"WARN: Controller {controller_key} not found | {element.tag}")
+            raise ValueError(f"WARN: Controller {controller_key} not found | {element.tag}")
         return current_contoller
 
     def create_view(self, view: ET.ElementTree) -> None:
