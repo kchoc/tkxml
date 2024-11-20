@@ -224,6 +224,10 @@ def create_page(parent: Frame, params: dict[str, str], controller: Optional[Cont
     return page
 
 def create_variable(parent: Widget, params: dict[str, str], controller: Optional[Controller]) -> None:
+
+    if not controller:
+        raise MissingControllerException("variable", None)
+    
     variable_type_key = params.get("type")
     if not variable_type_key:
         raise MissingAttributeException("variable", None, "type")
@@ -245,6 +249,8 @@ def create_variable(parent: Widget, params: dict[str, str], controller: Optional
         trace = params.get(mode)
         if trace:
             variable.trace_add(mode, process_trace(trace, controller))
+    
+    controller.set(variable_name, variable)
 
 def get_components() -> dict[str, Callable]:
     """
