@@ -3,8 +3,8 @@ This module is used to create the default tkinter components and sinc them with 
 """
 from tkinter.ttk import Combobox
 from tkinter import (
-    Button, Canvas, Checkbutton, Entry, Label, Listbox,
-    Menu, PhotoImage, Radiobutton, Spinbox, Widget, Frame
+    BooleanVar, Button, Canvas, Checkbutton, DoubleVar, Entry, IntVar, Label, Listbox,
+    Menu, PhotoImage, Radiobutton, Spinbox, StringVar, Variable, Widget, Frame
 )
 
 from typing import Callable, Optional
@@ -28,7 +28,24 @@ def process_command(command: str, controller: Optional[Controller]) -> Callable:
         return lambda controller=controller: exec(command[1:], {"controller": controller})
     return controller.get(command)
 
-def create_object(object_type: type, parent: Widget, params: dict,
+def process_trace(trace: str, controller: Optional[Controller]) -> Callable:
+    """
+    Processess variable traces; $ signifies a python expresion, else accesses a fucntion
+    inside the current controller
+
+    Args:
+        trace (str): The parameter value of the trace
+        controller (Optional[Controller]): The current active controller
+
+    Returns:
+        Callable: The function from the parsed trace parameter
+    """
+    if trace[0] == "$":
+        return lambda var, index, mode, controller=controller: exec(trace[1:],
+            {"controller": controller})
+    return controller.get(trace)
+
+def create_object(object_type: type, parent: Widget, params: dict[str, str],
                   controller: Optional[Controller]):
     """
     Default function for creating the tkinter component
@@ -48,7 +65,7 @@ def create_object(object_type: type, parent: Widget, params: dict,
 
     return element
 
-def split_params(params: dict, controller: Optional[Controller]) -> tuple [dict, dict]:
+def split_params(params: dict[str, str], controller: Optional[Controller]) -> tuple [dict, dict]:
     """
     Splits the component parmeters into pack, config and exculsive (widget specific parameters)
 
@@ -72,7 +89,7 @@ def split_params(params: dict, controller: Optional[Controller]) -> tuple [dict,
 
     return pack, config
 
-def remove_params(params: dict, keys: list) -> dict:
+def remove_params(params: dict[str, str], keys: list) -> dict[str, str]:
     """
     Removes parameters which are present in the keys list
 
@@ -85,7 +102,7 @@ def remove_params(params: dict, keys: list) -> dict:
     """
     return dict((key, item) for key, item in params.items() if key not in keys)
 
-def create_photo_image(parent: Widget, params: dict, controller: Optional[Controller]) -> Label:
+def create_photo_image(parent: Widget, params: dict[str, str], controller: Optional[Controller]) -> Label:
     """
     Creates a photo image component
 
@@ -107,7 +124,7 @@ def create_photo_image(parent: Widget, params: dict, controller: Optional[Contro
 
     return label_icon
 
-def create_listbox(parent, params: dict, controller: Optional[Controller]) -> Listbox:
+def create_listbox(parent, params: dict[str, str], controller: Optional[Controller]) -> Listbox:
     """
     Creates a listbox component
 
@@ -126,7 +143,7 @@ def create_listbox(parent, params: dict, controller: Optional[Controller]) -> Li
 
     return listbox
 
-def create_menu(parent: Widget, params: dict, _=None) -> Menu:
+def create_menu(parent: Widget, params: dict[str, str], _=None) -> Menu:
     """
     Creates a menu component
 
@@ -146,7 +163,7 @@ def create_menu(parent: Widget, params: dict, _=None) -> Menu:
 
     return menu
 
-def create_menu_option(parent: Menu, params: dict, controller: Optional[Controller]) -> None:
+def create_menu_option(parent: Menu, params: dict[str, str], controller: Optional[Controller]) -> None:
     """
     Adds an option to the menu
 
@@ -158,7 +175,7 @@ def create_menu_option(parent: Menu, params: dict, controller: Optional[Controll
     attr = remove_params(params, ["command"])
     parent.add_command(**attr, command=controller.get(params["command"]))
 
-def create_page(parent: Frame, params: dict, controller: Optional[Controller]) -> Frame:
+def create_page(parent: Frame, params: dict[str, str], controller: Optional[Controller]) -> Frame:
     """
     Creates a page inside the current controller
 
@@ -206,6 +223,29 @@ def create_page(parent: Frame, params: dict, controller: Optional[Controller]) -
 
     return page
 
+def create_variable(parent: Widget, params: dict[str, str], controller: Optional[Controller]) -> None:
+    variable_type_key = params.get("type")
+    if not variable_type_key:
+        raise MissingAttributeException("variable", None, "type")
+
+    variable_name = params.get("name")
+    if not variable_name:
+        raise MissingAttributeException("variable", None, "name")
+
+    variable_type = VARIABLES.get(variable_type_key.lower()[:3])
+    if not variable_type:
+        raise KeyError(f"WARN: Variable type {variable_type} could not be found!")
+
+    # TODO: Check if variable already exists
+
+    value = params.get("value")
+    variable: Variable = variable_type(parent, value) if params.get("value") else variable_type(parent)
+
+    for mode in ["array", "read", "write", "unset"]:
+        trace = params.get(mode)
+        if trace:
+            variable.trace_add(mode, process_trace(trace, controller))
+
 def get_components() -> dict[str, Callable]:
     """
     Gets the components available with their corresponding tags
@@ -221,6 +261,13 @@ def get_components() -> dict[str, Callable]:
     components.update(COMPLEX_COMPONENTS)
 
     return components
+
+VARIABLES = {
+    "int": IntVar,
+    "boo": BooleanVar,
+    "str": StringVar,
+    "dou": DoubleVar
+}
 
 CONFIG_PARAMETER_PARSERS = {
     "textvariable": lambda config, controller: controller.get(config["textvariable"]),
@@ -241,6 +288,7 @@ COMPLEX_COMPONENTS = {
     "menuoption": create_menu_option,
     "image": create_photo_image,
     "listbox": create_listbox,
+    "variable": create_variable,
     "title": lambda parent, parameters, controller: parent.title(parameters["title"]),
     "options": lambda parent, parameters, controller:
         [parent.option_add("*"+key, value) for key, value in parameters.items()],
