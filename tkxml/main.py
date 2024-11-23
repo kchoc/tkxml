@@ -24,7 +24,7 @@ class Tkxml:
         custom_components (dict): Stores the custom components used by the xml file.
         view (ET.ElementTree): The parsed XML element tree from the xml file.
     """
-    def __init__(self, filename, master: Tk, controllers: dict = None,
+    def __init__(self, filename, master: Tk, controllers: list[Controller] = None,
                  custom_components: list[type] = None) -> None:
         """
         Initializes an Tkxml object.
@@ -37,7 +37,7 @@ class Tkxml:
         """
         # Tkinter setup
         self.master = master
-        self.controllers = controllers
+        self.controllers = dict((controller.__class__.__name__, controller) for controller in controllers)
         self.custom_components = dict((component.element_tag, component)
                                       for component in custom_components)
 
