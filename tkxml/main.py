@@ -4,7 +4,6 @@ XML transformations, parse inputs, and create tkinter windows.
 """
 from tkinter import TclError, Tk
 from typing import Optional
-import xml.etree.ElementTree as ET
 
 from .utils import (
     MissingControllerException, MissingAttributeException, MissingTagException, raise_
@@ -12,6 +11,7 @@ from .utils import (
 from .components import get_components
 from .controller import Controller
 from .component import Component
+from .parser import parse, Node
 
 class Tkxml:
     """
@@ -25,7 +25,7 @@ class Tkxml:
         view (ET.ElementTree): The parsed XML element tree from the xml file.
     """
     def __init__(self, filename, master: Tk, controllers: list[Controller] = None,
-                 custom_components: list[type] = None) -> None:
+                 custom_components: list[type] = None, verbose: bool = False) -> None:
         """
         Initializes an Tkxml object.
 
@@ -37,19 +37,25 @@ class Tkxml:
         """
         # Tkinter setup
         self.master = master
-        self.controllers = dict((controller.__class__.__name__, controller) for controller in controllers)
+        self.controllers = dict((controller.__class__.__name__, controller)
+            for controller in controllers)if controllers else {}
         self.custom_components = dict((component.element_tag, component)
                                       for component in custom_components)
-
+        self.verbose = verbose
         self.components = get_components()
 
-        # Parse the view
-        view = ET.parse(filename)
+        # Read the tkxml file
+        with open(filename, "r") as file:
+            if file:
+                contents = file.read()
 
-        self.create_view(view)
+        # Parse the view
+        root, _ = parse(contents)
+
+        self.create_view(root)
         self.master.mainloop()
 
-    def get_controller(self, element: ET.Element,
+    def get_controller(self, element: Node,
                        current_contoller: Optional[Controller]) -> Optional[Controller]:
         """
         Checks whether the current element has a controller attribute and 
@@ -62,28 +68,30 @@ class Tkxml:
         Returns:
             Optional[Controller]: The selected controller.
         """
-        controller_key = element.attrib.get("controller")
+        controller_key = element.attributes.get("controller")
         if controller_key:
             controller = self.controllers.get(controller_key)
             if controller:
                 return controller
 
-            raise ValueError(f"WARN: Controller {controller_key} not found | {element.tag}")
+            raise ValueError(f"WARN: Controller {controller_key} not found | {element.name}")
         return current_contoller
 
-    def create_view(self, view: ET.ElementTree) -> None:
+    def create_view(self, root: Node) -> None:
         """
         Create the tkinter window view
 
         Parameters:
             view (ET.ElementTree): The xml parsed element tree.
         """
-        root = view.getroot()
         controller = self.get_controller(root, None)
-        for child in root:
+        if self.verbose:
+            print("Root Children:", [child.name for child in root.children])
+
+        for child in root.children:
             self.create_element(child, self.master, controller)
 
-    def create_element(self, element_tag: ET.Element, parent,
+    def create_element(self, element_node: Node, parent,
                        controller: Optional[Controller]) -> None:
         """
         Creates the next element using recursion to navigate through the Element Tree.
@@ -93,22 +101,25 @@ class Tkxml:
             parent (Widget): The parent tkinter object of this child element.
             controller (Optional[Controller]): The current active controller.
         """
-        controller = self.get_controller(element_tag, controller)
-        attrs = dict((key, item) for key, item in element_tag.attrib.items()
+        if self.verbose:
+            print("Creating Component: ", element_node.name)
+
+        controller = self.get_controller(element_node, controller)
+        attrs = dict((key, item) for key, item in element_node.attributes.items()
                      if key not in ["controller", "id"])
 
         element = None
         try:
-            custom_element = self.custom_components.get(element_tag.tag)
+            custom_element = self.custom_components.get(element_node.name)
 
             if custom_element:
                 element = custom_element(parent, attrs, controller)
             else:
-                element = self.components.get(element_tag.tag,
-                    lambda x, y, z: raise_(MissingTagException(element_tag.tag, parent))
+                element = self.components.get(element_node.name,
+                    lambda x, y, z: raise_(MissingTagException(element_node.name, parent))
                 )(parent, attrs, controller)
 
-            element_id = element_tag.attrib.get("id")
+            element_id = element_node.attributes.get("id")
             if element_id:
                 controller.set(element_id, element)
 
@@ -116,10 +127,10 @@ class Tkxml:
                 ValueError) as e:
             print(e)
         except TclError as e:
-            print(f"{e} | {element_tag.tag}")
+            print(f"{e} | {element_node.name}")
 
         if element is not None and not isinstance(element, Component):
             parent = element
 
-        for child in element_tag:
+        for child in element_node.children:
             self.create_element(child, parent, controller)
