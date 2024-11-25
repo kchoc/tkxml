@@ -6,7 +6,7 @@ class Component:
     """
     Base class for making custom components
     """
-    def __init__(self, parent, params, controller):
+    def __init__(self, parent, params, layout_manager, controller):
         """
         Initialises the base component with the default parameters
 
@@ -17,5 +17,6 @@ class Component:
         """
         self.parent = parent
         self.params = params
+        self.layout_manager = layout_manager
         self.controller = controller
         self.element_tag = "custom"

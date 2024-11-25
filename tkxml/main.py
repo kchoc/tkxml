@@ -15,14 +15,14 @@ from .parser import parse, Node
 
 class Tkxml:
     """
-    Parses an xml file into a tkinter application, whilst supporting controllers and 
+    Parses an tkxml file into a tkinter application, whilst supporting controllers and 
     custom components
 
     Attributes:
         master (Tk): The root of the tkinter application.
-        controllers (dict): Stores the controllers used by the xml file.
-        custom_components (dict): Stores the custom components used by the xml file.
-        view (ET.ElementTree): The parsed XML element tree from the xml file.
+        controllers (dict): Stores the controllers used by the tkxml file.
+        custom_components (dict): Stores the custom components used by the tlxml file.
+        root (ET.ElementTree): The parsed TKXML element tree from the tkxml file.
     """
     def __init__(self, filename, master: Tk, controllers: list[Controller] = None,
                  custom_components: list[type] = None, verbose: bool = False) -> None:
@@ -30,12 +30,12 @@ class Tkxml:
         Initializes an Tkxml object.
 
         Parameters:
-            filename (str): The file directory for the xml file.
+            filename (str): The file directory for the tkxml file.
             master (Tk): The root of the tkinter application.
-            controllers (dict): The controller objects used by the xml file.
-            custom_components (list): The custom component classes used by the xml file.
+            controllers (dict): The controller objects used by the tkxml file.
+            custom_components (list): The custom component classes used by the tkxml file.
         """
-        # Tkinter setup
+        # Tkinter 
         self.master = master
         self.controllers = dict((controller.__class__.__name__, controller)
             for controller in controllers)if controllers else {}
@@ -62,7 +62,7 @@ class Tkxml:
         replaces the active controller if so.
 
         Parameters:
-            element (ET.Element): The current xml element.
+            element (Node): The current xml element.
             current_controller (Optional[Controller]): The current active controller.
 
         Returns:
@@ -82,7 +82,7 @@ class Tkxml:
         Create the tkinter window view
 
         Parameters:
-            view (ET.ElementTree): The xml parsed element tree.
+            view (Node): The tkxml parsed element tree.
         """
         controller = self.get_controller(root, None)
         if self.verbose:
@@ -97,7 +97,7 @@ class Tkxml:
         Creates the next element using recursion to navigate through the Element Tree.
 
         Parameters:
-            element_tag (ET.Element): The current element tag from the xml file.
+            element_tag (Node): The current element tag from the tkxml file.
             parent (Widget): The parent tkinter object of this child element.
             controller (Optional[Controller]): The current active controller.
         """
@@ -113,11 +113,11 @@ class Tkxml:
             custom_element = self.custom_components.get(element_node.name)
 
             if custom_element:
-                element = custom_element(parent, attrs, controller)
+                element = custom_element(parent, attrs, element_node.layout_manager, controller)
             else:
                 element = self.components.get(element_node.name,
                     lambda x, y, z: raise_(MissingTagException(element_node.name, parent))
-                )(parent, attrs, controller)
+                )(parent, attrs, element_node.layout_manager, controller)
 
             element_id = element_node.attributes.get("id")
             if element_id:

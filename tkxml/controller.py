@@ -4,6 +4,8 @@ This module contains the base class for custom controllers
 from typing import Optional
 from tkinter import Frame
 
+from .widget_mixin import WidgetMixin
+
 class Controller:
     """
     Enables the creation of custom controls, which allows xml files to
@@ -11,7 +13,7 @@ class Controller:
     """
 
     def __init__(self):
-        self.pages: dict[str, dict[str, Frame]] = {}
+        self.pages: dict[str, dict[str, WidgetMixin]] = {}
         self.active_pages: dict[str, Optional[str]] = {}
 
     def set_page(self, section_name: str, page_name: str):
@@ -33,9 +35,9 @@ class Controller:
             raise KeyError(f"Cannot find {page_name} page.")
 
         for page in selected_section.values():
-            page.pack_forget()  # Hide all pages
+            page.deactivate()
 
-        selected_page.pack(fill="both", expand=True)
+        selected_page.activate()
         self.active_pages[section_name] = page_name
 
     def get(self, variable_name: str):

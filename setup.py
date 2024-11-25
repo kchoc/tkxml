@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name='tkxml',
-    version='0.0.4',
+    version='0.0.6',
     description='a pip-installable package example',
     license='MIT',
     packages=['tkxml'],

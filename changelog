@@ -1,0 +1,22 @@
+Version 0.0.1 - Initial commits
+- Set up the initial project structure
+- Added basic functionality
+
+Version 0.0.2 - Paging + Better error logging
+- Implemented paging for better data management
+- Improved error logging for easier debugging
+
+Version 0.0.3 - Variables
+- Added support for variables
+- Enhanced the configuration options
+
+Version 0.0.4 - New custom tkxml parser
+- Developed a new custom parser for tkxml
+- Improved parsing performance and accuracy
+
+Version 0.0.5 - Custom tkinter support
+- Added support for custom tkinter widgets
+- Enhanced the user interface with new widgets
+
+Version 0.0.6 - New custom widgets
+- Developed new custom widgets for easier widget management and creation
