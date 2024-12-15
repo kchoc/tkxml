@@ -5,7 +5,7 @@ from tkinter import (
     BooleanVar, DoubleVar, IntVar, StringVar, Variable
 )
 from .custom_components import (
-    Frame, Button, Label, Entry, Checkbutton, Page, Menu,
+    Container, Frame, Button, Label, Entry, Checkbutton, Page, Menu,
     Radiobutton, Combobox, Canvas, Listbox, Spinbox, Image, remove_params
 )
 from typing import Callable, Optional
@@ -111,7 +111,8 @@ VARIABLES = {
 COMMON_COMPONENT_TAGS: dict[str, type] = {
     "frame": Frame, "canvas": Canvas, "label": Label, "checkbutton": Checkbutton,
     "radiobutton": Radiobutton, "spinbox": Spinbox, "button": Button, "entry": Entry,
-    "combobox": Combobox, "listbox": Listbox, "image": Image, "menu": Menu, "page": Page
+    "combobox": Combobox, "listbox": Listbox, "image": Image, "menu": Menu, "page": Page,
+    "container": Container
 }
 
 COMPLEX_COMPONENTS = {

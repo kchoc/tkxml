@@ -93,18 +93,14 @@ class Menu(tk.Menu, WidgetMixin):
             self.parent.add_cascade(menu=self, **remove_params(self.config_parameters, ["tearoff"]))
 
 class Page(tk.Frame, WidgetMixin):
-    @create_widget
-    def __init__(self):
+    def __init__(self, parent, params, layout_manager, controller):
+        WidgetMixin.__init__(self, parent, params, layout_manager, controller)
         tk.Frame.__init__(self, self.parent)
         
-        page_name = self.config_parameters.pop("name", None)
-        page_section = self.config_parameters.pop("section", None)
-        self.config(**self.config_parameters)
-
-        if not page_name:
+        if (page_name := self.config_parameters.pop("name", None)) is None:
             raise MissingAttributeException("page", self, "name")
 
-        if not page_section:
+        if (page_section := self.config_parameters.pop("section", None)) is None:
             raise MissingAttributeException("page", self, "section")
 
         if self.controller is None:
@@ -119,6 +115,17 @@ class Page(tk.Frame, WidgetMixin):
 
         self.controller.pages[page_section][page_name] = self
 
-        selected = self.config_parameters.get("selected")
-        if selected and selected == "True" or not self.controller.active_pages[page_section]:
+        if self.config_parameters.pop("selected", False) or not self.controller.active_pages[page_section]:
             self.controller.set_page(page_section, page_name)
+        
+        self.config(**self.config_parameters)
+
+class Container(tk.Frame, WidgetMixin):
+    @create_widget
+    def __init__(self):
+        tk.Frame.__init__(self, self.parent, **remove_params(self.config_parameters, ["rowweight", "columnweight"]))
+        if (row_weight := self.config_parameters.pop("rowweight", None)) is not None:
+            self.grid_rowconfigure(0, weight=row_weight)
+
+        if (column_weight := self.config_parameters.pop("columnweight", None)) is not None:
+            self.grid_columnconfigure(0, weight=column_weight)

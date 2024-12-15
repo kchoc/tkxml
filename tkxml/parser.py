@@ -14,29 +14,30 @@ class Node:
 
 def get_attribute_value(data: str) -> tuple[str, str]:
     data = data.lstrip()
-    match data[0]:
-        case "'" | '"':
-            match = re.match(r'(["\'])(.*?)(?<!\\)\1', data)
-            if not match:
-                raise ValueError("Mismatched quotes in attribute value")
-            end_quote_index = match.end()
-            return data[1:end_quote_index - 1], data[end_quote_index:]
+    if data[0] == "'" or data[0] == '"':
+        match = re.match(r'(["\'])(.*?)(?<!\\)\1', data)
+        if not match:
+            raise ValueError("Mismatched quotes in attribute value")
+        end_quote_index = match.end()
+        return data[1:end_quote_index - 1], data[end_quote_index:]
 
-        case "[":
-            data = data[1:]
-            value = []
-            while data[0] != "]":
-                element, data = get_attribute_value(data)
-                value.append(element)
+    elif data[0] == "[":
+        data = data[1:]
+        value = []
+        while data[0] != "]":
+            element, data = get_attribute_value(data)
+            value.append(element)
 
-        case _:
-            match = re.match(r'[^/}\]> ]+', data)
-            end_space_index = match.end()
-            value = data[:end_space_index]
-            try:
-                return float(value), data[end_space_index:]
-            except ValueError:
-                return value, data[end_space_index:]
+    else:
+        match = re.match(r'[^/}\]> ]+', data)
+        end_space_index = match.end()
+        value = data[:end_space_index]
+        if value.isnumeric():
+            return int(value), data[end_space_index:]
+        try:
+            return float(value), data[end_space_index:]
+        except ValueError:
+            return value, data[end_space_index:]
 
 def check_comment(data: str) -> str:
     if data[:2] in ("//", "/*"):
@@ -51,8 +52,8 @@ def parse(data: str) -> tuple[Node, str]:
     # Select layout manager
     layout_manager_map = {
         "<": ["pack",  ">"],
-        "{": ["grid",  "}"],
-        "[": ["place", "]"]
+        "[": ["grid",  "]"],
+        "{": ["place", "}"]
     }
     node.layout_manager, close_tag = layout_manager_map.get(open_tag)
     if not node.layout_manager:

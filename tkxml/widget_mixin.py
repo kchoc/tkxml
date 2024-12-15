@@ -1,4 +1,5 @@
 from typing import Optional, Literal, Callable
+from .controller import Controller
 
 LAYOUT_ATTRIBUTES = {
     "pack": ["after", "anchor", "before", "expand", "fill", "in", "ipadx", "ipady",
@@ -73,7 +74,7 @@ class WidgetMixin:
             Deactivates the widget using the specified layout manager.
     """
     def __init__(self, parent, params: dict[str, str], layout_manager: Literal["pack", "grid", "place"],
-                controller):
+                controller: Controller):
         self.parent = parent
         self.layout_manager = layout_manager
         self.layout_attributes, self.config_parameters = split_params(params, controller, LAYOUT_ATTRIBUTES[layout_manager])
@@ -83,22 +84,20 @@ class WidgetMixin:
         """
         Activates the widget
         """
-        match self.layout_manager:
-            case "pack":
-                self.pack(**self.layout_attributes)
-            case "grid":
-                self.grid(**self.layout_attributes)
-            case "place":
-                self.place(**self.layout_attributes)
+        if self.layout_manager == "pack":
+            self.pack(**self.layout_attributes)
+        elif self.layout_manager == "grid":
+            self.grid(**self.layout_attributes)
+        elif self.layout_manager == "place":
+            self.place(**self.layout_attributes)
 
     def deactivate(self):
         """
         Deactivates the widget
         """
-        match self.layout_manager:
-            case "pack":
-                self.pack_forget()
-            case "grid":
-                self.grid_forget()
-            case "place":
-                self.place_forget()
+        if self.layout_manager == "pack":
+            self.pack_forget()
+        elif self.layout_manager == "grid":
+            self.grid_forget()
+        elif self.layout_manager == "place":
+            self.place_forget()

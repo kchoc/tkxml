@@ -2,9 +2,6 @@
 This module contains the base class for custom controllers
 """
 from typing import Optional
-from tkinter import Frame
-
-from .widget_mixin import WidgetMixin
 
 class Controller:
     """
@@ -13,7 +10,7 @@ class Controller:
     """
 
     def __init__(self):
-        self.pages: dict[str, dict[str, WidgetMixin]] = {}
+        self.pages: dict[str, dict[str, object]] = {}
         self.active_pages: dict[str, Optional[str]] = {}
 
     def set_page(self, section_name: str, page_name: str):

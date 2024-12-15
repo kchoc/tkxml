@@ -20,3 +20,15 @@ Version 0.0.5 - Custom tkinter support
 
 Version 0.0.6 - New custom widgets
 - Developed new custom widgets for easier widget management and creation
+
+Version 0.0.7 - Small Internal Changes
+- Refactored code to make it more maintainable + updated docstrings
+- THESE WERE REVERTED AS IT CAUSED MORE PROBLEMS
+
+Version 0.0.8 - Increased compatibility of python versions
+- Removed match cases and replaced with if-else selection
+- Changed the place and grid tags to be more logical
+- Fixed grid layout manager
+- Added container component
+
+Version 0.0.9
